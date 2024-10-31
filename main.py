@@ -35,12 +35,21 @@ def get_data_by_cardinality(
         Any: O último item ativo se a cardinalidade for 'one';
              caso contrário, retorna uma lista de itens ativos.
     """
+    # Filtra os dados ativos para a entidade e tipo especificados
     filtered_data = [item for item in data_list if item['name'] == name and item['type'] == data_type and item['active']]
-    if cardinality == 'ONE':
-        return filtered_data[-1] if filtered_data else None
-    return filtered_data
+    
+    seen_values = set()
+    unique_data = []
+    for item in reversed(filtered_data):  
+        if item['value'] not in seen_values:
+            seen_values.add(item['value'])
+            unique_data.insert(0, item)
 
-def data_process(schema: List[Tuple[str, str, str]], data_list: List[Tuple[str, str, str, bool]]) -> None:
+    if cardinality == 'ONE':
+        return unique_data[-1] if unique_data else None
+    return unique_data
+
+def data_process(schema: List[Tuple[str, str, str]], data_list: List[Tuple[str, str, str, bool]]) -> List[Tuple[str, str, str, bool]]:
     """
     Processa os dados de entrada com base no esquema e imprime os resultados.
 
@@ -49,10 +58,9 @@ def data_process(schema: List[Tuple[str, str, str]], data_list: List[Tuple[str, 
         data_list (List[Tuple[str, str, str, bool]]): Lista de dados a serem processados.
 
     Returns:
-        None: Esta função imprime os resultados processados.
+        List[Tuple[str, str, str, bool]]: Lista de fatos processados válidos.
     """
-    # Formata os dados de entrada
-    data_formatted = [{'name': data[0], 'type': data[1], 'address': data[2], 'active': data[3]} for data in data_list]
+    data_formatted = [{'name': data[0], 'type': data[1], 'value': data[2], 'active': data[3]} for data in data_list]
     schema_formatted = [{'type': data[0], 'cardinality': data[2]} for data in schema]
 
     response = []
@@ -62,13 +70,13 @@ def data_process(schema: List[Tuple[str, str, str]], data_list: List[Tuple[str, 
                 processed_data = get_data_by_cardinality(data_formatted, data['name'], data_type=data['type'], cardinality=rule['cardinality'].upper())
                 
                 if isinstance(processed_data, dict):
-                    data_reconverted = (processed_data['name'], processed_data['type'], processed_data['address'], processed_data['active'])
+                    data_reconverted = (processed_data['name'], processed_data['type'], processed_data['value'], processed_data['active'])
                     if data_reconverted not in response:
                         response.append(data_reconverted)
 
                 elif isinstance(processed_data, list):
                     for info in processed_data:
-                        data_reconverted = (info['name'], info['type'], info['address'], info['active'])
+                        data_reconverted = (info['name'], info['type'], info['value'], info['active'])
                         if data_reconverted not in response:
                             response.append(data_reconverted)
 
