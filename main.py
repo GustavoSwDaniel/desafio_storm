@@ -35,17 +35,24 @@ def get_data_by_cardinality(
         Any: O último item ativo se a cardinalidade for 'one';
              caso contrário, retorna uma lista de itens ativos.
     """
-    # Filtra os dados ativos para a entidade e tipo especificados
-    filtered_data = [item for item in data_list if item['name'] == name and item['type'] == data_type and item['active']]
+    filtered_data = [
+        item for item in data_list 
+        if item['name'] == name and item['type'] == data_type
+    ]
     
-    seen_values = set()
-    unique_data = []
-    for item in reversed(filtered_data):  
-        if item['value'] not in seen_values:
-            seen_values.add(item['value'])
-            unique_data.insert(0, item)
+    active_values = {}
+    
+    for item in filtered_data:
+        if item['active']:  
+            active_values[item['value']] = item
+        else:
+            if item['value'] in active_values:
+                del active_values[item['value']]
+    
+    unique_data = list(active_values.values())
 
-    if cardinality == 'ONE':
+    if cardinality.lower() == 'one':
+        # Retorna o  endereço ativo
         return unique_data[-1] if unique_data else None
     return unique_data
 
@@ -66,8 +73,8 @@ def data_process(schema: List[Tuple[str, str, str]], data_list: List[Tuple[str, 
     response = []
     for data in data_formatted:
         for rule in schema_formatted:
-            if rule['type'].upper() == data['type'].upper():
-                processed_data = get_data_by_cardinality(data_formatted, data['name'], data_type=data['type'], cardinality=rule['cardinality'].upper())
+            if rule['type'].lower() == data['type'].lower():
+                processed_data = get_data_by_cardinality(data_formatted, data['name'], data_type=data['type'], cardinality=rule['cardinality'].lower())
                 
                 if isinstance(processed_data, dict):
                     data_reconverted = (processed_data['name'], processed_data['type'], processed_data['value'], processed_data['active'])
@@ -86,3 +93,10 @@ response = data_process(schema=schema, data_list=facts)
 
 for resp in response:
     print(resp)
+
+
+('gabriel', 'endereço', 'av rio branco, 109', True),
+('joão', 'endereço', 'rua bob, 88', True),
+('joão', 'telefone', '91234-5555', True),
+('gabriel', 'telefone', '98888-1111', True),
+('gabriel', 'telefone', '56789-1010', True)
